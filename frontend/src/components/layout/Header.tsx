@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCheck, Bell, Shield, LogOut } from 'lucide-react';
+import { UserCheck, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
 
   const formatTitle = (t: string) => {
     switch (t) {
-      case 'dashboard': return 'Accounts Payable Dashboard';
+      case 'dashboard': return 'Shout Accounts Payable Dashboard';
       case 'invoices': return 'Invoice Capture & Repository';
       case 'ocr-review': return 'OCR Extraction Review & Verification';
       case 'exceptions': return 'Invoice Exceptions & Validation Management';
@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
       case 'audit': return 'Tamper-Evident Audit Trail';
       case 'matrix': return 'Approval Workflow Matrix Configuration';
       case 'integrations': return 'Enterprise System Integrations';
-      default: return 'AP Automation';
+      default: return 'Shout AP Automation';
     }
   };
 
@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
       {/* Title */}
       <div>
         <h1 className="text-lg font-bold text-slate-900 tracking-tight">{formatTitle(currentTab)}</h1>
-        <p className="text-xs text-slate-500">Automated invoice capture, extraction, matching, and settlement</p>
+        <p className="text-xs text-slate-500">Shout Accounts Payable Automation • OCR, 3-Way Matching & Approvals</p>
       </div>
 
       {/* Role Switcher & Actions */}
@@ -75,6 +75,13 @@ export const Header: React.FC<HeaderProps> = ({ currentTab }) => {
           <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xs ring-2 ring-teal-500/20">
             {user?.full_name?.charAt(0) || 'A'}
           </div>
+          <button
+            onClick={() => logout()}
+            title="Sign out of Shout AP Automation"
+            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

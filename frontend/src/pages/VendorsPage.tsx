@@ -20,7 +20,7 @@ export const VendorsPage: React.FC = () => {
     gstin: '',
     pan: '',
     payment_terms: 'Net 30',
-    currency: 'USD'
+    currency: 'INR'
   });
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export const VendorsPage: React.FC = () => {
         gstin: '',
         pan: '',
         payment_terms: 'Net 30',
-        currency: 'USD'
+        currency: 'INR'
       });
       loadVendors();
     } catch (err: any) {
@@ -229,7 +229,7 @@ export const VendorsPage: React.FC = () => {
                 onChange={(e) => setNewVendor({ ...newVendor, currency: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-teal-500"
               >
-                <option value="USD">USD ($)</option>
+                <option value="INR">INR (₹)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
                 <option value="INR">INR (₹)</option>

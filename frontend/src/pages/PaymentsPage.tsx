@@ -4,6 +4,7 @@ import { ApiService } from '../services/api';
 import { PaymentRequest } from '../types';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
+import { formatINR } from '../utils/currency';
 
 export const PaymentsPage: React.FC = () => {
   const [readyInvoices, setReadyInvoices] = useState<any[]>([]);
@@ -168,7 +169,7 @@ export const PaymentsPage: React.FC = () => {
                     <td className="px-5 py-3.5 font-medium text-slate-800">{inv.vendor_name}</td>
                     <td className="px-5 py-3.5 text-slate-500">{inv.due_date}</td>
                     <td className="px-5 py-3.5 font-bold text-slate-900">
-                      {inv.currency} {inv.outstanding_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatINR(inv.outstanding_amount)}
                     </td>
                     <td className="px-5 py-3.5">
                       <Badge status={inv.status} />
@@ -225,7 +226,7 @@ export const PaymentsPage: React.FC = () => {
                   <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-5 py-3.5 font-bold font-mono text-slate-900">{req.request_number}</td>
                     <td className="px-5 py-3.5 font-bold text-slate-900">
-                      {req.currency} {Number(req.requested_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatINR(req.requested_amount)}
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">{req.payment_method}</td>
                     <td className="px-5 py-3.5 text-slate-500">{req.requested_at?.substring(0, 10)}</td>
@@ -272,7 +273,7 @@ export const PaymentsPage: React.FC = () => {
           <div className="border-b border-slate-200 pb-3 flex justify-between items-start">
             <div>
               <h4 className="font-bold text-slate-900 text-sm">PAYMENT ADVICE VOUCHER</h4>
-              <p className="text-slate-500 text-[11px]">Apex Enterprise Treasury Settlement Desk</p>
+              <p className="text-slate-500 text-[11px]">Shout AP Automation • Treasury Settlement Desk</p>
             </div>
             <div className="text-right">
               <span className="font-bold text-teal-700">{activeAdvice?.advice_number || 'ADV-20261102-001'}</span>
@@ -294,15 +295,15 @@ export const PaymentsPage: React.FC = () => {
           <div className="border border-slate-200 rounded-lg p-3 space-y-2">
             <div className="flex justify-between">
               <span>Gross Invoiced Amount:</span>
-              <span className="font-bold">${Number(activeAdvice?.total_gross_amount || activeAdvice?.requested_amount || 0).toFixed(2)}</span>
+              <span className="font-bold">{formatINR(activeAdvice?.total_gross_amount || activeAdvice?.requested_amount)}</span>
             </div>
             <div className="flex justify-between text-amber-700">
               <span>Statutory TDS Deduction (2.0%):</span>
-              <span>-${Number(activeAdvice?.tax_deducted_tds || 0).toFixed(2)}</span>
+              <span>-{formatINR(activeAdvice?.tax_deducted_tds || 0)}</span>
             </div>
             <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-sm text-teal-800">
               <span>Net Settled Amount:</span>
-              <span>${Number(activeAdvice?.net_paid_amount || activeAdvice?.requested_amount || 0).toFixed(2)}</span>
+              <span>{formatINR(activeAdvice?.net_paid_amount || activeAdvice?.requested_amount)}</span>
             </div>
           </div>
 

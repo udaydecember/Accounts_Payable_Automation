@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ApiService } from '../services/api';
 import { Invoice, ExtractionFieldValue } from '../types';
+import { formatINR } from '../utils/currency';
 
 interface OCRReviewPageProps {
   initialInvoiceId?: string;
@@ -60,7 +61,7 @@ export const OCRReviewPage: React.FC<OCRReviewPageProps> = ({ initialInvoiceId, 
       total_amount: String(inv.total_amount || '0.00'),
       taxable_amount: String(inv.taxable_amount || '0.00'),
       total_tax_amount: String(inv.total_tax_amount || '0.00'),
-      currency: inv.currency || 'USD',
+      currency: inv.currency || 'INR',
       payment_terms: inv.payment_terms || 'Net 30',
       bank_account_number: inv.bank_account_number || '',
       bank_ifsc: inv.bank_ifsc || ''
@@ -190,19 +191,19 @@ export const OCRReviewPage: React.FC<OCRReviewPageProps> = ({ initialInvoiceId, 
                     selectedInvoice.line_items.map((li, idx) => (
                       <div key={idx} className="flex justify-between py-1 border-b border-slate-900 last:border-0">
                         <span>{li.item_description} (x{Number(li.quantity)})</span>
-                        <span className="font-bold text-teal-400">${Number(li.line_total).toFixed(2)}</span>
+                        <span className="font-bold text-teal-400">{formatINR(li.line_total)}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-slate-500 italic">Precision Industrial Valve Unit (x10) - $12,500.00</div>
+                    <div className="text-slate-500 italic">Precision Industrial Valve Unit (x10) - ₹12,500.00</div>
                   )}
                 </div>
               </div>
 
               <div className="border-t border-slate-700 pt-3 space-y-1 text-right">
-                <p className="text-slate-400">Taxable Subtotal: <span className="text-white">${formFields.taxable_amount}</span></p>
-                <p className="text-slate-400">Total Tax: <span className="text-white">${formFields.total_tax_amount}</span></p>
-                <p className="text-sm font-bold text-teal-400 mt-1">Total Amount Payable: ${formFields.total_amount}</p>
+                <p className="text-slate-400">Taxable Subtotal: <span className="text-white">{formatINR(formFields.taxable_amount)}</span></p>
+                <p className="text-slate-400">Total Tax: <span className="text-white">{formatINR(formFields.total_tax_amount)}</span></p>
+                <p className="text-sm font-bold text-teal-400 mt-1">Total Amount Payable: {formatINR(formFields.total_amount)}</p>
               </div>
             </div>
 
@@ -298,10 +299,10 @@ export const OCRReviewPage: React.FC<OCRReviewPageProps> = ({ initialInvoiceId, 
                 />
               </div>
 
-              {/* Taxable Amount */}
+              {/* Taxable Amount (₹) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700">Taxable Amount *</label>
+                  <label className="text-xs font-semibold text-slate-700">Taxable Amount (₹) *</label>
                   <span className="text-[10px] text-emerald-600 font-semibold">93% Conf</span>
                 </div>
                 <input
@@ -313,10 +314,10 @@ export const OCRReviewPage: React.FC<OCRReviewPageProps> = ({ initialInvoiceId, 
                 />
               </div>
 
-              {/* Total Tax Amount */}
+              {/* Total Tax Amount (₹) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700">Total Tax Amount *</label>
+                  <label className="text-xs font-semibold text-slate-700">Total Tax Amount (₹) *</label>
                   <span className="text-[10px] text-emerald-600 font-semibold">94% Conf</span>
                 </div>
                 <input
@@ -331,7 +332,7 @@ export const OCRReviewPage: React.FC<OCRReviewPageProps> = ({ initialInvoiceId, 
               {/* Total Invoice Amount */}
               <div className="sm:col-span-2 bg-teal-50/50 p-3 rounded-lg border border-teal-200">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-teal-900">Total Amount Payable *</label>
+                  <label className="text-xs font-bold text-teal-900">Total Amount Payable (₹) *</label>
                   <span className="text-[10px] text-emerald-700 font-bold">99% Conf</span>
                 </div>
                 <input

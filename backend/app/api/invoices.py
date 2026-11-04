@@ -5,6 +5,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_current_user, require_roles
 from backend.app.models.auth import User
@@ -74,7 +75,7 @@ def upload_invoices(
             due_date=due_date_val,
             po_number=extracted.get("po_number"),
             payment_terms=extracted.get("payment_terms", "Net 30"),
-            currency=extracted.get("currency", "USD"),
+            currency=extracted.get("currency", "INR"),
             subtotal=Decimal(str(extracted.get("taxable_amount", 0.00))),
             discount_amount=Decimal(str(extracted.get("discount_amount", 0.00))),
             taxable_amount=Decimal(str(extracted.get("taxable_amount", 0.00))),
@@ -203,6 +204,92 @@ def list_invoices(
         )
     return query.order_by(Invoice.created_at.desc()).offset(offset).limit(limit).all()
 
+@router.api_route("/reset-transaction-history", methods=["POST", "DELETE"])
+def reset_transaction_history(
+    confirm: bool = Query(False, description="Explicit confirmation required to reset invoice transactions"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "ap_manager"]))
+):
+    from backend.app.models.matching import InvoicePOMatch
+    from backend.app.models.workflow import ApprovalInstance, ApprovalStep, ApprovalAction
+    from backend.app.models.payment import PaymentBatch, PaymentRequest, PaymentTransaction, PaymentAdvice
+    from backend.app.models.system import AuditLog
+
+    if not confirm:
+        inv_count = db.query(Invoice).count()
+        pay_count = db.query(PaymentRequest).count()
+        exc_count = db.query(InvoiceException).count()
+        match_count = db.query(InvoicePOMatch).count()
+        appr_count = db.query(ApprovalInstance).count()
+        return {
+            "status": "confirmation_required",
+            "warning": "This operation will permanently delete all invoice records, exceptions, OCR extractions, matching records, approval instances, and payment transactions. Vendors, user accounts, purchase orders, goods receipts, and system configurations will NOT be touched.",
+            "records_to_remove": {
+                "invoices": inv_count,
+                "invoice_exceptions": exc_count,
+                "po_matches": match_count,
+                "approval_instances": appr_count,
+                "payment_requests": pay_count
+            },
+            "confirmation_instruction": "Call this endpoint with confirm=true to proceed with the permanent reset."
+        }
+
+    # Execute clean deletion in dependency order
+    db.query(InvoicePOMatch).delete(synchronize_session=False)
+    db.query(ApprovalAction).delete(synchronize_session=False)
+    db.query(ApprovalStep).delete(synchronize_session=False)
+    db.query(ApprovalInstance).delete(synchronize_session=False)
+
+    db.query(PaymentAdvice).delete(synchronize_session=False)
+    db.query(PaymentTransaction).delete(synchronize_session=False)
+    db.query(PaymentRequest).delete(synchronize_session=False)
+    db.query(PaymentBatch).delete(synchronize_session=False)
+
+    db.query(InvoiceException).delete(synchronize_session=False)
+    db.query(InvoiceValidation).delete(synchronize_session=False)
+    db.query(ExtractionFieldValue).delete(synchronize_session=False)
+    db.query(InvoiceExtraction).delete(synchronize_session=False)
+    db.query(InvoiceLineItem).delete(synchronize_session=False)
+    db.query(InvoiceDocument).delete(synchronize_session=False)
+    db.query(Invoice).delete(synchronize_session=False)
+
+    db.query(AuditLog).filter(
+        AuditLog.entity_name.in_(["Invoice", "PaymentRequest", "PaymentBatch", "ApprovalInstance"])
+    ).delete(synchronize_session=False)
+
+    # Clean uploaded physical files from storage
+    if os.path.exists(settings.STORAGE_DIR):
+        for fname in os.listdir(settings.STORAGE_DIR):
+            fpath = os.path.join(settings.STORAGE_DIR, fname)
+            if os.path.isfile(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
+
+    db.commit()
+
+    log_audit(
+        db,
+        action="TRANSACTION_HISTORY_RESET",
+        entity_name="System",
+        entity_id="ALL",
+        user_id=current_user.id,
+        details={"message": "All transaction history reset. System ready for fresh invoice captures."}
+    )
+
+    return {
+        "status": "success",
+        "message": "All invoice and transaction history reset to zero. Vendors, Users, POs, and Configuration preserved.",
+        "counts": {
+            "invoices": 0,
+            "exceptions": 0,
+            "pending_approvals": 0,
+            "payments": 0
+        }
+    }
+
+
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
 def get_invoice_detail(invoice_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
@@ -223,7 +310,16 @@ def correct_ocr_fields(
 
     latest_extraction = db.query(InvoiceExtraction).filter(InvoiceExtraction.invoice_id == invoice.id).order_by(InvoiceExtraction.extracted_at.desc()).first()
     if not latest_extraction:
-        raise HTTPException(status_code=400, detail="No extraction record found for this invoice")
+        latest_extraction = InvoiceExtraction(
+            invoice_id=invoice.id,
+            model_name="Manual-Review-v1",
+            ocr_engine="Human-Correction",
+            extraction_status="Completed",
+            overall_confidence=1.0,
+            extracted_at=datetime.now(timezone.utc)
+        )
+        db.add(latest_extraction)
+        db.flush()
 
     changes = {}
     for item in batch.corrections:
@@ -239,6 +335,19 @@ def correct_ocr_fields(
             field_rec.corrected_by_id = current_user.id
             field_rec.corrected_at = datetime.now(timezone.utc)
             field_rec.confidence_score = 1.0  # Human verified
+        else:
+            changes[item.field_name] = {"old": "", "new": item.corrected_value}
+            field_rec = ExtractionFieldValue(
+                extraction_id=latest_extraction.id,
+                field_name=item.field_name,
+                original_value="",
+                corrected_value=item.corrected_value,
+                confidence_score=1.0,
+                is_corrected=True,
+                corrected_by_id=current_user.id,
+                corrected_at=datetime.now(timezone.utc)
+            )
+            db.add(field_rec)
 
         # Sync back to invoice master attributes
         if item.field_name == "invoice_number":
@@ -311,3 +420,4 @@ def submit_for_approval(
     instance = workflow_engine.initiate_workflow(db, invoice)
     log_audit(db, action="SUBMIT_FOR_APPROVAL", entity_name="Invoice", entity_id=invoice.id, user_id=current_user.id, details={"status": invoice.status})
     return {"message": "Invoice successfully routed for approval", "workflow_instance_id": instance.id, "status": invoice.status}
+

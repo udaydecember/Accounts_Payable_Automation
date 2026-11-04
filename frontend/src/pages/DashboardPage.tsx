@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ApiService } from '../services/api';
 import { DashboardMetrics } from '../types';
+import { formatINR } from '../utils/currency';
 
 interface DashboardProps {
   onNavigate: (tab: string) => void;
@@ -75,9 +76,9 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 mb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
-            AP Automation Pipeline Live
+            Shout AP Automation Pipeline Live
           </span>
-          <h2 className="text-xl font-bold tracking-tight">Invoice-to-Payment Lifecycle Overview</h2>
+          <h2 className="text-xl font-bold tracking-tight">Shout Accounts Payable Automation Overview</h2>
           <p className="text-sm text-slate-300 mt-1 max-w-2xl">
             Real-time database aggregated metrics across document capture, OCR AI extraction, 3-way matching, approval hierarchy, and banking settlement.
           </p>
@@ -112,7 +113,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-slate-900">{summary.total_invoices}</span>
-            <span className="text-xs text-slate-500 font-medium">${summary.total_invoice_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span className="text-xs text-slate-500 font-medium">{formatINR(summary.total_invoice_amount)}</span>
           </div>
           <div className="mt-3 text-xs text-slate-500 flex items-center justify-between">
             <span>{summary.paid_count} settled</span>
@@ -171,7 +172,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-emerald-600">${summary.total_outstanding_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span className="text-2xl font-bold text-emerald-600">{formatINR(summary.total_outstanding_amount)}</span>
           </div>
           <div className="mt-3 text-xs text-slate-500 flex items-center justify-between">
             <span>{summary.pending_payment} invoices queued</span>
@@ -188,7 +189,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-slate-900 text-base">Accounts Payable Aging Schedule</h3>
+              <h3 className="font-bold text-slate-900 text-base">Shout Accounts Payable Aging Schedule</h3>
               <p className="text-xs text-slate-500">Outstanding liabilities grouped by invoice maturity buckets</p>
             </div>
             <button
@@ -203,7 +204,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">0 - 30 Days</span>
               <span className="text-lg font-bold text-slate-900 block mt-1">
-                ${aging.current_0_30.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {formatINR(aging.current_0_30)}
               </span>
               <span className="text-[11px] text-emerald-600 font-medium block mt-1">Current Term</span>
             </div>
@@ -211,7 +212,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">31 - 60 Days</span>
               <span className="text-lg font-bold text-slate-900 block mt-1">
-                ${aging.past_31_60.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {formatINR(aging.past_31_60)}
               </span>
               <span className="text-[11px] text-amber-600 font-medium block mt-1">Due Shortly</span>
             </div>
@@ -219,7 +220,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">61 - 90 Days</span>
               <span className="text-lg font-bold text-slate-900 block mt-1">
-                ${aging.past_61_90.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {formatINR(aging.past_61_90)}
               </span>
               <span className="text-[11px] text-rose-500 font-medium block mt-1">Overdue</span>
             </div>
@@ -227,7 +228,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">90+ Days</span>
               <span className="text-lg font-bold text-rose-700 block mt-1">
-                ${aging.past_90_plus.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {formatINR(aging.past_90_plus)}
               </span>
               <span className="text-[11px] text-rose-700 font-medium block mt-1">Critical Overdue</span>
             </div>
@@ -252,7 +253,7 @@ export const DashboardPage: React.FC<DashboardProps> = ({ onNavigate }) => {
                         <td className="px-4 py-2.5 font-medium text-slate-900">{v.vendor_name}</td>
                         <td className="px-4 py-2.5">{v.count} invoice(s)</td>
                         <td className="px-4 py-2.5 text-right font-bold text-slate-900">
-                          ${v.total_spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {formatINR(v.total_spend)}
                         </td>
                       </tr>
                     ))

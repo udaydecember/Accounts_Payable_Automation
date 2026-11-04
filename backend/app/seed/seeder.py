@@ -1,3 +1,14 @@
+import os
+import sys
+
+# Ensure root and backend directories are on sys.path
+_current = os.path.dirname(os.path.abspath(__file__))
+_backend = os.path.abspath(os.path.join(_current, "..", ".."))
+_root = os.path.abspath(os.path.join(_backend, ".."))
+for p in [_root, _backend]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -422,3 +433,11 @@ def seed_database(db: Session):
 
     db.commit()
     print("Seeding completed successfully!")
+
+if __name__ == "__main__":
+    from backend.app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    finally:
+        db.close()

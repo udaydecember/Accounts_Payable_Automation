@@ -14,6 +14,7 @@ import {
 import { ApiService } from '../services/api';
 import { Invoice } from '../types';
 import { Badge } from '../components/common/Badge';
+import { formatINR } from '../utils/currency';
 
 interface InvoiceDetailPageProps {
   invoiceId: string;
@@ -127,6 +128,16 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({ invoiceId,
               <span className="text-slate-500">Price Variance:</span>
               <span className="font-semibold text-slate-800">{matchData?.price_variance_pct ? `${matchData.price_variance_pct.toFixed(2)}%` : '0.00%'}</span>
             </div>
+            {matchDetails?.discrepancies && matchDetails.discrepancies.length > 0 && (
+              <div className="mt-2.5 pt-2 border-t border-rose-100 space-y-1">
+                <span className="text-[10px] font-bold text-rose-700 block uppercase tracking-wider">Discrepancy Details:</span>
+                {matchDetails.discrepancies.map((d: any, idx: number) => (
+                  <p key={idx} className="text-[11px] text-rose-600 leading-snug">
+                    • <span className="font-semibold">{d.type}:</span> {d.description}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -136,19 +147,19 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({ invoiceId,
           <div className="space-y-1 text-xs">
             <div className="flex justify-between text-slate-600">
               <span>Taxable Subtotal:</span>
-              <span>${Number(invoice.taxable_amount).toFixed(2)}</span>
+              <span>{formatINR(invoice.taxable_amount)}</span>
             </div>
             <div className="flex justify-between text-slate-600">
               <span>Total Tax (GST):</span>
-              <span>${Number(invoice.total_tax_amount).toFixed(2)}</span>
+              <span>{formatINR(invoice.total_tax_amount)}</span>
             </div>
             <div className="border-t border-teal-200 pt-1.5 flex justify-between font-bold text-base text-teal-950">
               <span>Total Amount:</span>
-              <span>${Number(invoice.total_amount).toFixed(2)}</span>
+              <span>{formatINR(invoice.total_amount)}</span>
             </div>
             <div className="flex justify-between text-[11px] text-emerald-700 font-semibold pt-1">
               <span>Amount Paid:</span>
-              <span>${Number(invoice.amount_paid).toFixed(2)}</span>
+              <span>{formatINR(invoice.amount_paid)}</span>
             </div>
           </div>
         </div>
@@ -180,9 +191,9 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({ invoiceId,
                     <td className="px-5 py-3 font-bold text-slate-900">{item.item_description}</td>
                     <td className="px-5 py-3 font-mono text-slate-600">{item.material_code || 'MAT-VALVE-01'}</td>
                     <td className="px-5 py-3 font-semibold">{Number(item.quantity)} {item.uom}</td>
-                    <td className="px-5 py-3">${Number(item.unit_price).toFixed(2)}</td>
+                    <td className="px-5 py-3">{formatINR(item.unit_price)}</td>
                     <td className="px-5 py-3">{Number(item.tax_rate)}%</td>
-                    <td className="px-5 py-3 text-right font-bold text-slate-900">${Number(item.line_total).toFixed(2)}</td>
+                    <td className="px-5 py-3 text-right font-bold text-slate-900">{formatINR(item.line_total)}</td>
                   </tr>
                 ))
               ) : (

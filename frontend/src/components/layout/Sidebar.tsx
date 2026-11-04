@@ -45,19 +45,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 min-h-screen border-r border-slate-800">
       {/* Brand Header */}
       <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
-        <div className="w-9 h-9 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-lg border border-teal-500/30">
+        <div className="w-9 h-9 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-lg border border-teal-500/30 shrink-0">
           <Receipt className="w-5 h-5 text-teal-400" />
         </div>
-        <div>
-          <span className="font-bold text-white text-base tracking-tight block">Apex AP Platform</span>
-          <span className="text-[10px] text-teal-400 font-semibold uppercase tracking-wider block">Enterprise OCR & AI</span>
+        <div className="min-w-0">
+          <span
+            className="font-bold text-white text-sm tracking-tight block truncate"
+            title="Shout Accounts Payable Automation"
+          >
+            Shout AP Automation
+          </span>
+          <span className="text-[10px] text-teal-400 font-semibold uppercase tracking-wider block truncate">
+            Enterprise OCR & AI
+          </span>
         </div>
       </div>
 
       {/* Nav List */}
       <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-          Accounts Payable
+          Shout AP Automation
         </div>
 
         {navItems
@@ -69,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                   isActive
                     ? 'bg-teal-500 text-white shadow-xs font-semibold'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -91,7 +98,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
             Online
           </span>
         </div>
-        <p className="text-[11px] text-slate-400">PostgreSQL • Hybrid OCR • Alembic</p>
+        <div className="text-[11px] text-slate-400 truncate">
+          Shout Accounts Payable Automation
+        </div>
       </div>
     </aside>
   );

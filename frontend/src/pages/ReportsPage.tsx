@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Download, FileSpreadsheet, FileText, Calendar, Filter } from 'lucide-react';
 import { ApiService } from '../services/api';
+import { formatINR } from '../utils/currency';
 
 export const ReportsPage: React.FC = () => {
   const [activeReport, setActiveReport] = useState<'aging' | 'tax' | 'exceptions'>('aging');
@@ -152,7 +153,7 @@ export const ReportsPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-right font-bold text-slate-900">
-                          ${Number(row.balance_due).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {formatINR(row.balance_due)}
                         </td>
                       </>
                     ) : activeReport === 'tax' ? (
@@ -160,11 +161,11 @@ export const ReportsPage: React.FC = () => {
                         <td className="px-5 py-3 font-bold text-slate-900">{row.invoice_number}</td>
                         <td className="px-5 py-3 font-medium text-slate-800">{row.vendor_name}</td>
                         <td className="px-5 py-3 font-mono text-slate-600">{row.gstin}</td>
-                        <td className="px-5 py-3 font-medium text-slate-800">${Number(row.taxable_amount).toFixed(2)}</td>
-                        <td className="px-5 py-3 text-slate-600">${(Number(row.cgst) + Number(row.sgst)).toFixed(2)}</td>
-                        <td className="px-5 py-3 text-slate-600">${Number(row.igst).toFixed(2)}</td>
+                        <td className="px-5 py-3 font-medium text-slate-800">{formatINR(row.taxable_amount)}</td>
+                        <td className="px-5 py-3 text-slate-600">{formatINR(Number(row.cgst) + Number(row.sgst))}</td>
+                        <td className="px-5 py-3 text-slate-600">{formatINR(row.igst)}</td>
                         <td className="px-5 py-3 text-right font-bold text-slate-900">
-                          ${Number(row.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {formatINR(row.total_amount)}
                         </td>
                       </>
                     ) : (

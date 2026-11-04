@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sliders, Plus, ShieldCheck, CheckCircle, ArrowRight } from 'lucide-react';
 import { ApiService } from '../services/api';
 import { Modal } from '../components/common/Modal';
+import { formatINR } from '../utils/currency';
 
 export const WorkflowConfigPage: React.FC = () => {
   const [matrices, setMatrices] = useState<any[]>([]);
@@ -109,7 +110,7 @@ export const WorkflowConfigPage: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5 font-bold text-slate-900">{rule.rule_name}</td>
                     <td className="px-5 py-3.5 font-mono text-slate-800">
-                      ${Number(rule.min_amount).toLocaleString()} - {rule.max_amount ? `$${Number(rule.max_amount).toLocaleString()}` : 'Unlimited Cap'}
+                      {formatINR(rule.min_amount)} - {rule.max_amount ? formatINR(rule.max_amount) : 'Unlimited Cap'}
                     </td>
                     <td className="px-5 py-3.5 font-medium text-slate-700">{rule.department || 'All Departments'}</td>
                     <td className="px-5 py-3.5">
@@ -145,7 +146,7 @@ export const WorkflowConfigPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Min Invoiced Amount ($) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Min Invoiced Amount (₹) *</label>
               <input
                 required
                 type="number"
@@ -155,7 +156,7 @@ export const WorkflowConfigPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Max Invoiced Amount ($)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Max Invoiced Amount (₹)</label>
               <input
                 type="number"
                 value={newRule.max_amount}

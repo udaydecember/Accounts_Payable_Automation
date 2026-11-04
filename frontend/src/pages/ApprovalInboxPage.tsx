@@ -4,6 +4,7 @@ import { ApiService } from '../services/api';
 import { ApprovalInstance, Invoice } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/common/Modal';
+import { formatINR } from '../utils/currency';
 
 interface ApprovalInboxProps {
   onSelectInvoice: (id: string) => void;
@@ -135,7 +136,7 @@ export const ApprovalInboxPage: React.FC<ApprovalInboxProps> = ({ onSelectInvoic
 
                   <div className="text-right">
                     <div className="text-lg font-black text-slate-900">
-                      {invoice?.currency || 'USD'} {Number(invoice?.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatINR(invoice?.total_amount)}
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Due: {invoice?.due_date || invoice?.invoice_date || 'Net 30'}

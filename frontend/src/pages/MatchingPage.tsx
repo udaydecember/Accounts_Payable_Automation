@@ -38,7 +38,7 @@ export const MatchingPage: React.FC = () => {
       setOverrideNotes('');
       loadMatches();
     } catch (err: any) {
-      alert(`Override failed: ${err.message}`);
+      alert(`Override failed: ₹{err.message}`);
     } finally {
       setOverriding(false);
     }

@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, Any, Tuple, Optional
@@ -16,6 +17,10 @@ class MatchingEngine:
     def perform_matching(self, db: Session, invoice: Invoice) -> Tuple[str, Dict[str, Any]]:
         # 1. Check if invoice has PO reference
         if not invoice.po_number or not invoice.po_number.strip():
+            db.query(InvoiceException).filter(
+                InvoiceException.invoice_id == invoice.id,
+                InvoiceException.rule_code == 'PO_GRN_MATCH_DISCREPANCY'
+            ).delete()
             match_record = InvoicePOMatch(
                 invoice_id=invoice.id,
                 match_type='Two_Way',
@@ -28,15 +33,49 @@ class MatchingEngine:
             )
             db.add(match_record)
             invoice.status = 'Matching_Failed'
+            db.add(InvoiceException(
+                invoice_id=invoice.id,
+                rule_code='PO_GRN_MATCH_DISCREPANCY',
+                severity='Critical',
+                message='Matching failed: No PO reference provided on invoice.',
+                suggested_action='Enter the corresponding Purchase Order reference.'
+            ))
             db.commit()
             return 'Missing_PO', {'status': 'Missing_PO', 'message': 'No PO Reference found on invoice.'}
 
+        raw_po = invoice.po_number.strip() if invoice.po_number else ""
+        # Clean PO reference (handles e.g. "PO Ref: PO-1001", "PO Reference: 1001", "PO# 1001", "PO No: 1001")
+        # Only strip prefix keywords if followed by Ref, Reference, #, No, Number, or colon
+        clean_po = re.sub(r"^(?:PO\s*(?:Ref(?:erence)?|#|No\.?|Number)\s*:?\s*|PO\s*:\s*)", "", raw_po, flags=re.IGNORECASE).strip()
+        if not clean_po:
+            clean_po = raw_po
+
+        # Candidate PO strings to search
+        candidates = {raw_po, clean_po}
+        if clean_po.startswith("-"):
+            clean_po = clean_po.lstrip("-").strip()
+            candidates.add(clean_po)
+        if clean_po:
+            candidates.add(f"PO-{clean_po}")
+            candidates.add(f"PO{clean_po}")
+
         # Find PO
         po = db.query(PurchaseOrder).filter(
-            PurchaseOrder.po_number.ilike(invoice.po_number.strip())
+            PurchaseOrder.po_number.in_(list(candidates))
         ).first()
 
         if not po:
+            for cand in candidates:
+                if cand:
+                    po = db.query(PurchaseOrder).filter(PurchaseOrder.po_number.ilike(cand)).first()
+                    if po:
+                        break
+
+        if not po:
+            db.query(InvoiceException).filter(
+                InvoiceException.invoice_id == invoice.id,
+                InvoiceException.rule_code == 'PO_GRN_MATCH_DISCREPANCY'
+            ).delete()
             match_record = InvoicePOMatch(
                 invoice_id=invoice.id,
                 match_type='Two_Way',
@@ -44,49 +83,87 @@ class MatchingEngine:
                 header_variance_amount=invoice.total_amount,
                 price_variance_pct=0.0,
                 quantity_variance=0.0,
-                discrepancy_details=json.dumps({'error': f'Purchase Order {invoice.po_number} not found in system.'}),
+                discrepancy_details=json.dumps({'error': f'Purchase Order "{raw_po}" not found in system.'}),
                 is_resolved=False
             )
             db.add(match_record)
             invoice.status = 'Matching_Failed'
+            db.add(InvoiceException(
+                invoice_id=invoice.id,
+                rule_code='PO_GRN_MATCH_DISCREPANCY',
+                severity='Critical',
+                message=f'Matching failed: Purchase Order "{raw_po}" does not exist in master.',
+                suggested_action='Verify the PO number with the purchasing team.'
+            ))
             db.commit()
-            return 'Missing_PO', {'status': 'Missing_PO', 'message': f'Purchase Order {invoice.po_number} does not exist in master.'}
+            return 'Missing_PO', {'status': 'Missing_PO', 'message': f'Purchase Order "{raw_po}" does not exist in master.'}
 
-        # Check vendor match
-        vendor_match = (invoice.vendor_id == po.vendor_id)
+        # Check vendor match (compare vendor_id, GSTIN, or vendor name)
         discrepancies = []
+        vendor_match = (invoice.vendor_id == po.vendor_id)
+        if not vendor_match and po.vendor:
+            # Check GSTIN alignment
+            if invoice.vendor_gstin and po.vendor.gstin:
+                if invoice.vendor_gstin.strip().upper() == po.vendor.gstin.strip().upper():
+                    vendor_match = True
+                    invoice.vendor_id = po.vendor_id
+            # Check Vendor name alignment
+            if not vendor_match and invoice.vendor_name_raw and po.vendor.vendor_name:
+                v_clean1 = re.sub(r"[^A-Za-z0-9]", "", invoice.vendor_name_raw).lower()
+                v_clean2 = re.sub(r"[^A-Za-z0-9]", "", po.vendor.vendor_name).lower()
+                if v_clean1 in v_clean2 or v_clean2 in v_clean1:
+                    vendor_match = True
+                    invoice.vendor_id = po.vendor_id
+
         if not vendor_match:
             discrepancies.append({
                 'type': 'Vendor Mismatch',
-                'description': f'Invoice vendor ({invoice.vendor_id}) does not match PO vendor ({po.vendor_id}).'
+                'description': f'Invoice vendor ({invoice.vendor_name_raw or invoice.vendor_id}) does not match PO vendor ({po.vendor.vendor_name if po.vendor else po.vendor_id}).'
             })
 
         # Find GRN (Goods Receipt) if available for 3-way matching
         grn = db.query(GoodsReceipt).filter(GoodsReceipt.po_id == po.id).order_by(GoodsReceipt.receipt_date.desc()).first()
         match_type = 'Three_Way' if grn else 'Two_Way'
 
+        if match_type == 'Three_Way' and grn.status not in ['Verified', 'Approved', 'Received']:
+            discrepancies.append({
+                'type': 'GRN Not Verified',
+                'description': f'Goods receipt {grn.grn_number} status is "{grn.status}". Must be Verified for 3-way match.'
+            })
+
         # Line item comparison
         line_comparison = []
         total_price_variance_pct = Decimal('0.0')
         total_quantity_variance = Decimal('0.0')
 
-        po_lines_by_code = {item.material_code: item for item in po.line_items if item.material_code}
-        po_lines_by_desc = {item.item_description.lower(): item for item in po.line_items}
+        po_lines_by_code = {item.material_code.strip().upper(): item for item in po.line_items if item.material_code}
+        po_lines_by_desc = {item.item_description.strip().lower(): item for item in po.line_items}
 
         grn_lines_by_item = {}
         if grn:
             for g_item in grn.line_items:
                 if g_item.material_code:
-                    grn_lines_by_item[g_item.material_code] = g_item
+                    grn_lines_by_item[g_item.material_code.strip().upper()] = g_item
+                grn_lines_by_item[g_item.item_description.strip().lower()] = g_item
 
         for inv_item in invoice.line_items:
             po_item = None
-            if inv_item.material_code and inv_item.material_code in po_lines_by_code:
-                po_item = po_lines_by_code[inv_item.material_code]
-            elif inv_item.item_description.lower() in po_lines_by_desc:
-                po_item = po_lines_by_desc[inv_item.item_description.lower()]
-            elif po.line_items:
-                # Fallback to first line item if single item
+            clean_mat = inv_item.material_code.strip().upper() if inv_item.material_code else None
+            clean_desc = inv_item.item_description.strip().lower()
+
+            if clean_mat and clean_mat in po_lines_by_code:
+                po_item = po_lines_by_code[clean_mat]
+            elif clean_desc in po_lines_by_desc:
+                po_item = po_lines_by_desc[clean_desc]
+            else:
+                # Substring description match
+                for desc_key, item_candidate in po_lines_by_desc.items():
+                    if desc_key in clean_desc or clean_desc in desc_key:
+                        po_item = item_candidate
+                        break
+
+            # Fallback to single line item if only 1 item on both PO and Invoice
+            if not po_item and len(po.line_items) == 1 and len(invoice.line_items) == 1:
                 po_item = po.line_items[0]
 
             if not po_item:
@@ -117,7 +194,15 @@ class MatchingEngine:
                 })
 
             # Quantity comparison
-            grn_item = grn_lines_by_item.get(inv_item.material_code) if (grn and inv_item.material_code) else None
+            grn_item = None
+            if grn:
+                if clean_mat and clean_mat in grn_lines_by_item:
+                    grn_item = grn_lines_by_item[clean_mat]
+                elif clean_desc in grn_lines_by_item:
+                    grn_item = grn_lines_by_item[clean_desc]
+                elif len(grn.line_items) == 1:
+                    grn_item = grn.line_items[0]
+
             accepted_qty = grn_item.accepted_quantity if grn_item else po_item.received_quantity
 
             # If 3-Way match, compare against GRN accepted quantity
@@ -143,9 +228,9 @@ class MatchingEngine:
                 'status': line_status
             })
 
-        # Header total variance
+        # Header total variance (tolerance: ₹5.00)
         header_diff = abs(invoice.total_amount - po.total_amount)
-        if header_diff > Decimal('5.00') and not discrepancies:
+        if header_diff > Decimal('5.00'):
             discrepancies.append({
                 'type': 'Header Total Variance',
                 'description': f'Total invoice amount ({invoice.total_amount}) deviates from PO total ({po.total_amount}) by {header_diff}.'
@@ -177,17 +262,23 @@ class MatchingEngine:
         )
         db.add(match_record)
 
+        # Clear existing match discrepancy exceptions
+        db.query(InvoiceException).filter(
+            InvoiceException.invoice_id == invoice.id,
+            InvoiceException.rule_code == 'PO_GRN_MATCH_DISCREPANCY'
+        ).delete()
+
         if overall_status == 'Matched':
             invoice.status = 'Matching_Passed'
         else:
             invoice.status = 'Matching_Failed'
-            # Add an invoice exception so it appears in Exception management
+            discrepancy_reasons = "; ".join([d.get("description", "") for d in discrepancies])
             exc = InvoiceException(
                 invoice_id=invoice.id,
                 rule_code='PO_GRN_MATCH_DISCREPANCY',
                 severity='Critical',
-                message=f'{match_type} match failed with {len(discrepancies)} discrepancy(ies).',
-                suggested_action='Resolve variances in Matching module or obtain manager override.'
+                message=f'{match_type} match failed: {discrepancy_reasons}',
+                suggested_action='Resolve variances in line pricing or quantities with procurement.'
             )
             db.add(exc)
 

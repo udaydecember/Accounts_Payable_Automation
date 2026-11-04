@@ -17,29 +17,48 @@ export class ApiService {
       headers.set('Content-Type', 'application/json');
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers
-    });
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers
+      });
 
-    if (response.status === 401 && !endpoint.includes('/auth/login')) {
-      // Trigger token refresh or logout if expired
-      localStorage.removeItem('access_token');
-      window.dispatchEvent(new Event('auth:unauthorized'));
+      if (response.status === 401 && !endpoint.includes('/auth/login')) {
+        // Trigger token refresh or logout if expired
+        localStorage.removeItem('access_token');
+        window.dispatchEvent(new Event('auth:unauthorized'));
+      }
+
+      if (!response.ok) {
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+          throw new Error('Backend server is unreachable (502 Bad Gateway). Please ensure the FastAPI server is running on http://127.0.0.1:8000.');
+        }
+        let detailMessage = response.statusText;
+        try {
+          const err = await response.json();
+          detailMessage = err.detail || JSON.stringify(err);
+        } catch {
+          const rawText = await response.text().catch(() => '');
+          if (rawText && rawText.length < 200) {
+            detailMessage = rawText;
+          }
+        }
+        throw new Error(detailMessage || 'An error occurred during API request');
+      }
+
+      // Handle binary responses (e.g. CSV/Excel downloads)
+      const contentType = response.headers.get('content-type');
+      if (contentType && (contentType.includes('text/csv') || contentType.includes('spreadsheetml'))) {
+        return (await response.blob()) as unknown as T;
+      }
+
+      return response.json();
+    } catch (networkError: any) {
+      if (networkError instanceof TypeError && (networkError.message.includes('fetch') || networkError.message.includes('network'))) {
+        throw new Error('Cannot connect to backend server. Please ensure the backend is running at http://127.0.0.1:8000.');
+      }
+      throw networkError;
     }
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: response.statusText }));
-      throw new Error(err.detail || 'An error occurred during API request');
-    }
-
-    // Handle binary responses (e.g. CSV/Excel downloads)
-    const contentType = response.headers.get('content-type');
-    if (contentType && (contentType.includes('text/csv') || contentType.includes('spreadsheetml'))) {
-      return (await response.blob()) as unknown as T;
-    }
-
-    return response.json();
   }
 
   // Auth
@@ -96,6 +115,12 @@ export class ApiService {
 
   static submitForApproval(invoiceId: string) {
     return this.request<any>(`/invoices/${invoiceId}/submit-approval`, { method: 'POST' });
+  }
+
+  static resetTransactionHistory(confirm = false) {
+    return this.request<any>(`/invoices/reset-transaction-history?confirm=${confirm}`, {
+      method: 'POST'
+    });
   }
 
   // Exceptions

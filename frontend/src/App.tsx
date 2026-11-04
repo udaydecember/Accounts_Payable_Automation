@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { LoginPage } from './pages/LoginPage';
 
 import { DashboardPage } from './pages/DashboardPage';
 import { InvoicesPage } from './pages/InvoicesPage';
@@ -18,8 +19,24 @@ import { AuditLogsPage } from './pages/AuditLogsPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 
 const MainApp: React.FC = () => {
+  const { user, loading } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
+  if (loading && !user) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300">
+        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold tracking-wider uppercase text-teal-400">
+          Loading Shout Accounts Payable Automation...
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
 
   const handleSelectInvoice = (id: string) => {
     setSelectedInvoiceId(id);

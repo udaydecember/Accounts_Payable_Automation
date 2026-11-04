@@ -173,15 +173,18 @@ class ValidationEngine:
         else:
             passed_rules.append('AMOUNT_MATH_INTEGRITY_PASSED')
 
-        # Line items sum check
+        # Line items sum check (against either subtotal/taxable base or grand total)
         if invoice.line_items:
             items_sum = sum((item.line_total or Decimal('0.00')) for item in invoice.line_items)
-            line_diff = abs(items_sum - (invoice.total_amount or Decimal('0.00')))
+            subtotal_base = invoice.subtotal if (invoice.subtotal and invoice.subtotal > 0) else invoice.taxable_amount
+            diff_subtotal = abs(items_sum - (subtotal_base or Decimal('0.00')))
+            diff_total = abs(items_sum - (invoice.total_amount or Decimal('0.00')))
+            line_diff = min(diff_subtotal, diff_total)
             if line_diff > Decimal('1.00'):
                 exceptions.append({
                     'rule_code': 'LINE_ITEMS_SUM_MISMATCH',
                     'severity': 'Warning',
-                    'message': f'Sum of line item totals ({items_sum}) differs from total amount ({invoice.total_amount}) by {line_diff}.',
+                    'message': f'Sum of line item totals ({items_sum}) differs from invoice subtotal ({subtotal_base}) and total amount ({invoice.total_amount}) by {line_diff}.',
                     'suggested_action': 'Verify individual line item calculations and discounts.'
                 })
             else:
