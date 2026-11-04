@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from backend.app.models.auth import User
 from backend.app.models.invoice import Invoice
+from backend.app.models.vendor import Vendor
 from backend.app.models.payment import PaymentRequest, PaymentBatch, PaymentTransaction, PaymentAdvice
 from backend.app.models.system import IntegrationLog
 
@@ -175,7 +176,7 @@ class PaymentService:
         advice = PaymentAdvice(
             advice_number=advice_num,
             payment_request_id=req.id,
-            vendor_id=invoice.vendor_id or 'DEFAULT_VENDOR',
+            vendor_id=invoice.vendor_id or (db.query(Vendor).first().id if db.query(Vendor).first() else None),
             total_gross_amount=req.requested_amount,
             tax_deducted_tds=tds_deduction,
             other_deductions=Decimal('0.00'),

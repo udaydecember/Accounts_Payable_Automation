@@ -50,7 +50,7 @@ class WorkflowEngine:
         for rule in rules:
             min_amt = rule.min_amount or Decimal('0.00')
             max_amt = rule.max_amount or Decimal('999999999.00')
-            dept_match = (not rule.department or rule.department.lower() == invoice.department.lower())
+            dept_match = (not rule.department or (invoice.department and rule.department.lower() == invoice.department.lower()))
             if min_amt <= invoice.total_amount and dept_match:
                 applicable_rules.append(rule)
 

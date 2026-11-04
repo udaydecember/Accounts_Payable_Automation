@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -13,9 +13,34 @@ from backend.app.services.audit_service import log_audit
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username.lower()).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+async def login(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    username = ""
+    password = ""
+
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            username = body.get("username") or body.get("email") or ""
+            password = body.get("password") or ""
+        except Exception:
+            pass
+    else:
+        try:
+            form = await request.form()
+            username = form.get("username") or form.get("email") or ""
+            password = form.get("password") or ""
+        except Exception:
+            pass
+
+    if not username or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username/email and password are required"
+        )
+
+    user = db.query(User).filter(User.email == str(username).lower().strip()).first()
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

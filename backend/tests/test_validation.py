@@ -33,13 +33,29 @@ def test_validation_mandatory_fields_and_math():
 def test_validation_duplicate_detection():
     db = SessionLocal()
     try:
-        # Query existing Acme vendor
+        # Query vendor
         vendor = db.query(Vendor).filter(Vendor.vendor_code == "VEND-ACME-01").first()
+        if not vendor:
+            vendor = db.query(Vendor).first()
         assert vendor is not None
 
-        # Existing invoice has number INV-2026-1001
+        # Create original invoice
+        orig_inv = Invoice(
+            invoice_number="INV-DUP-TEST-001",
+            vendor_id=vendor.id,
+            invoice_date=date.today(),
+            total_amount=Decimal("12500.00"),
+            subtotal=Decimal("10593.22"),
+            total_tax_amount=Decimal("1906.78"),
+            currency="USD",
+            status="Draft"
+        )
+        db.add(orig_inv)
+        db.commit()
+
+        # Create duplicate invoice
         dup_inv = Invoice(
-            invoice_number="INV-2026-1001",
+            invoice_number="INV-DUP-TEST-001",
             vendor_id=vendor.id,
             invoice_date=date.today(),
             total_amount=Decimal("12500.00"),
