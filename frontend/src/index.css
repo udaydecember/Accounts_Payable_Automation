@@ -28,3 +28,16 @@ body {
   background: #94a3b8;
 }
 
+/* Subtle glow and gradient utilities */
+.gradient-border-teal-purple {
+  position: relative;
+  background: linear-gradient(135deg, #0d9488, #3b82f6, #8b5cf6);
+  padding: 1px;
+  border-radius: 1rem;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #0f766e, #2563eb, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

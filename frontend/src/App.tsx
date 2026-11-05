@@ -22,13 +22,14 @@ const MainApp: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   if (loading && !user) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-300">
-        <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-xs font-semibold tracking-wider uppercase text-teal-400">
-          Loading Shout Accounts Payable Automation...
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-slate-700">
+        <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-bold tracking-wider uppercase text-teal-800">
+          Loading Accounts Payable Automation Platform...
         </p>
       </div>
     );
@@ -93,11 +94,19 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100/60 overflow-hidden text-slate-800">
-      <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+    <div className="flex h-screen bg-slate-50/70 overflow-hidden text-slate-800">
+      <Sidebar
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header currentTab={currentTab} />
-        <main className="flex-1 overflow-y-auto p-6">{renderContent()}</main>
+        <Header
+          currentTab={currentTab}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+        />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{renderContent()}</main>
       </div>
     </div>
   );

@@ -83,6 +83,8 @@ export interface Invoice {
   invoice_number: string;
   vendor_id?: string;
   vendor_name_raw?: string;
+  vendor_name?: string;
+  vendor?: Vendor;
   vendor_gstin?: string;
   invoice_date: string;
   due_date?: string;
