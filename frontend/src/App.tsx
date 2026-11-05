@@ -94,7 +94,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50/70 overflow-hidden text-slate-800">
+    <div className="flex h-screen bg-[#f8fafc] overflow-hidden text-slate-800">
       <Sidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -106,7 +106,7 @@ const MainApp: React.FC = () => {
           currentTab={currentTab}
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{renderContent()}</main>
+        <main className="flex-1 overflow-y-auto p-3 md:p-4 pt-3">{renderContent()}</main>
       </div>
     </div>
   );
