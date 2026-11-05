@@ -51,12 +51,14 @@ def test_full_14_step_business_lifecycle():
         db.add(inv)
         db.flush()
 
+        po_item = po.line_items[0] if po.line_items else None
         line = InvoiceLineItem(
             invoice_id=inv.id,
             line_number=1,
-            item_description="Plastic chairs",
-            quantity=Decimal("10.0"),
-            unit_price=Decimal("1000.00"),
+            item_description=po_item.item_description if po_item else "Office Furniture (sample item)",
+            material_code=po_item.material_code if po_item else "MAT-FURN-01",
+            quantity=po_item.quantity if po_item else Decimal("1.0"),
+            unit_price=po_item.unit_price if po_item else Decimal("10000.00"),
             tax_rate=Decimal("18.0"),
             tax_amount=Decimal("1800.00"),
             line_total=Decimal("10000.00")
